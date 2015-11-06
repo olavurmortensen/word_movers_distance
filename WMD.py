@@ -13,7 +13,8 @@ from nltk.corpus import brown
 from nltk import word_tokenize
 import numpy as np
 
-sys.path.append('../wmd/python-emd-master')
+PATH_TO_EMD = '../wmd/python-emd-master'
+sys.path.append(PATH_TO_EMD)
 from emd import emd
 
 import logging
