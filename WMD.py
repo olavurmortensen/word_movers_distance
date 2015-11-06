@@ -9,8 +9,6 @@ import pickle
 import sys
 import pdb
 
-from nltk.corpus import brown
-from nltk import word_tokenize
 import numpy as np
 
 PATH_TO_EMD = '../wmd/python-emd-master'
