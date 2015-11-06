@@ -7,4 +7,4 @@
 
 ## Usage
 
-See `WMD.py`.
+See `WMD.py`. Run `w2v_embeddings.py` to produce word2vec vectors.
