@@ -48,22 +48,34 @@ def nBOW(document, vocab):
     norm = len(document)
     d = []
     for i, t in enumerate(vocab):
-        d.append(document.count(t) / float(norm))
+        d.append(document.count(t) / float(norm))  # TODO: when norm is zero?
 
     return d
 
-def WMD(document1, document2, embeddings, vocab):
+def WMD(document1, document2, model):
     '''
     Compute WMD.
 
     Input:
     document1:      List of words.
     document2:      List of words.
-    embeddings:     word2vec embeddings of words.
+    model:          Word2vec model, providing the word embeddings.
     vocab:          Set of words in all documents.
 
     Returns:        WMD between documents, float.
     '''
+
+    # Remove out-of-vocabulary words.
+    document1 = [token for token in document1 if token in model.vocab.keys()]
+    document2 = [token for token in document2 if token in model.vocab.keys()]
+
+    if len(document1) == 0 or len(document2) == 0:
+        logging.info('At least one of the documents had no words that were in the vocabulary. Aborting.')
+        return float('nan')
+
+    vocab = set()
+    for token in document1 + document2:
+        vocab.add(token)
 
     # Compute nBOW representation of documents.
     d1 = np.array(nBOW(document1, vocab))
@@ -72,7 +84,7 @@ def WMD(document1, document2, embeddings, vocab):
     distance_matrix = np.zeros((len(vocab), len(vocab)), dtype=np.float)
     for i, t1 in enumerate(vocab):
         for j, t2 in enumerate(vocab):
-            distance_matrix[i][j] = distance(embeddings[t1], embeddings[t2])
+            distance_matrix[i][j] = distance(model[t1], model[t2])
 
     # Return WMD.
     return emd(d1, d2, distance_matrix)
@@ -84,17 +96,9 @@ if __name__ == '__main__':
     # Sentence to compute distance between.
     sentence1 = 'one two five'.split()
     sentence2 = 'three four five'.split()
-
-    # Remove out-of-vocabulary words.
-    sentence1 = [token for token in sentence1 if token in model.vocab.keys()]
-    sentence2 = [token for token in sentence2 if token in model.vocab.keys()]
-
-    vocab = set()
-    for token in sentence1 + sentence2:
-        vocab.add(token)
-
+    
     # Compute WMD.
-    D = WMD(sentence1, sentence2, model, vocab)
+    D = WMD(sentence1, sentence2, model)
 
     print D
 
