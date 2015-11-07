@@ -11,9 +11,7 @@ import pdb
 
 import numpy as np
 
-PATH_TO_EMD = '../wmd/python-emd-master'
-sys.path.append(PATH_TO_EMD)
-from emd import emd
+from pyemd import emd
 
 import logging
 
@@ -36,30 +34,25 @@ def distance(v1, v2):
 
     return dist
 
-def nBOW(document):
+def nBOW(document, vocab):
     '''
     Compute nBOW representation of a document
 
     Input:
     doc:        Document, list of words (strings).
+    vocab:      Set of words in all documents.
 
     Returns:    List of floats, nBow representation.
     '''
 
-    # Compute the normalized frequency of each token (store in dictionary).
     norm = len(document)
-    d_dict = {}
-    for token in document:
-        d_dict[token] = document.count(token) / float(norm)
-
-    # Procude list with normalized frequency for each token in document.
     d = []
-    for i, token in enumerate(document):
-        d.append(d_dict[token])
+    for i, t in enumerate(vocab):
+        d.append(document.count(t) / float(norm))
 
     return d
 
-def WMD(document1, document2, embeddings):
+def WMD(document1, document2, embeddings, vocab):
     '''
     Compute WMD.
 
@@ -67,39 +60,41 @@ def WMD(document1, document2, embeddings):
     document1:      List of words.
     document2:      List of words.
     embeddings:     word2vec embeddings of words.
+    vocab:          Set of words in all documents.
 
     Returns:        WMD between documents, float.
     '''
 
     # Compute nBOW representation of documents.
-    d1 = nBOW(document1)
-    d2 = nBOW(document2)
-    
-    # Get features.
-    features1 = [tuple(embeddings[token]) for token in document1]
-    features2 = [tuple(embeddings[token]) for token in document2]
+    d1 = np.array(nBOW(document1, vocab))
+    d2 = np.array(nBOW(document2, vocab))
+
+    distance_matrix = np.zeros((len(vocab), len(vocab)), dtype=np.float)
+    for i, t1 in enumerate(vocab):
+        for j, t2 in enumerate(vocab):
+            distance_matrix[i][j] = distance(embeddings[t1], embeddings[t2])
 
     # Return WMD.
-    return emd((features1, d1), (features2, d1), distance)
+    return emd(d1, d2, distance_matrix)
 
 if __name__ == '__main__':
     with open('w2v_model.pickle', 'rb') as f:
         model = pickle.load(f)
 
     # Sentence to compute distance between.
-    sentence1 = 'mayor london'.split()
-    sentence2 = 'president america'.split()
+    sentence1 = 'one two five'.split()
+    sentence2 = 'three four five'.split()
 
     # Remove out-of-vocabulary words.
     sentence1 = [token for token in sentence1 if token in model.vocab.keys()]
     sentence2 = [token for token in sentence2 if token in model.vocab.keys()]
 
+    vocab = set()
+    for token in sentence1 + sentence2:
+        vocab.add(token)
+
     # Compute WMD.
-    D = WMD(sentence1, sentence2, model)
+    D = WMD(sentence1, sentence2, model, vocab)
 
     print D
-
-
-
-    
 
