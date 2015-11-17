@@ -17,22 +17,6 @@ import logging
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-def distance(v1, v2):
-    '''
-    Compute the Euclidean distance between two vectors v1 and v2.
-
-    Input:
-    v1, v2:     Numpy arrays (flat).
-
-    Returns:    Distance (float).
-    '''
-    dist = 0
-    for i in xrange(len(v1)):
-        dist += (v1[i] - v2[i])**2
-    
-    dist = np.sqrt(dist)
-
-    return dist
 
 def nBOW(document, vocab):
     '''
@@ -45,10 +29,10 @@ def nBOW(document, vocab):
     Returns:    List of floats, nBow representation.
     '''
 
-    norm = len(document)
+    doc_len = len(document)
     d = []
     for i, t in enumerate(vocab):
-        d.append(document.count(t) / float(norm))  # TODO: when norm is zero?
+        d.append(document.count(t) / float(doc_len))
 
     return d
 
@@ -66,25 +50,33 @@ def WMD(document1, document2, model):
     '''
 
     # Remove out-of-vocabulary words.
+    len_pre_oov1 = len(document1)
+    len_pre_oov2 = len(document2)
     document1 = [token for token in document1 if token in model.vocab.keys()]
     document2 = [token for token in document2 if token in model.vocab.keys()]
+    logging.info('Removed %d and %d OOV words from document 1 and 2 (respectively).', len_pre_oov1 - len(document1), len_pre_oov2 - len(document2))
 
     if len(document1) == 0 or len(document2) == 0:
-        logging.info('At least one of the documents had no words that were in the vocabulary. Aborting.')
+        logging.info('At least one of the documents had no words that were in the vocabulary. Aborting (returning NaN).')
         return float('nan')
 
-    vocab = set()
-    for token in document1 + document2:
-        vocab.add(token)
+    vocab = set(document1 + document2)
 
     # Compute nBOW representation of documents.
     d1 = np.array(nBOW(document1, vocab))
     d2 = np.array(nBOW(document2, vocab))
 
-    distance_matrix = np.zeros((len(vocab), len(vocab)), dtype=np.float)
+    vocab_len = len(vocab)
+    distance_matrix = np.zeros((vocab_len, vocab_len), dtype=np.float)
     for i, t1 in enumerate(vocab):
         for j, t2 in enumerate(vocab):
-            distance_matrix[i][j] = distance(model[t1], model[t2])
+            if not t1 in document1 or not t2 in document2:
+                # Only compute the distances that we need.
+                continue
+            # Compute Euclidean distance between word vectors.
+            # TODO: this matrix is (and should be) symmetric, so we can save some computation here.
+            # TODO: why not cosine distance?
+            distance_matrix[i][j] = np.sqrt(np.sum((model[t1] - model[t2])**2))
 
     # Return WMD.
     return emd(d1, d2, distance_matrix)
@@ -94,8 +86,8 @@ if __name__ == '__main__':
         model = pickle.load(f)
 
     # Sentence to compute distance between.
-    sentence1 = 'one two five'.split()
-    sentence2 = 'three four five'.split()
+    sentence1 = 'one two three'.split()
+    sentence2 = 'four five one'.split()
     
     # Compute WMD.
     D = WMD(sentence1, sentence2, model)
